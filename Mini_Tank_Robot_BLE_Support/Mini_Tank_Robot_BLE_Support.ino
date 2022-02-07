@@ -1,8 +1,10 @@
 
 //Use 'Bluetooth Electronics' Android App for Control
 
-
-//Array, used to store the data of the pattern, can be calculated by yourself or obtained from the modulus tool
+//-----------------------------------------------------------------------------------------------------------------------------------
+//DOT MATRIX LED DISPLAY
+//-----------------------------------------------------------------------------------------------------------------------------------
+//Array, used to store the images for the 8 x 16 LED Display
 unsigned char mouthClose[] = {0x00, 0x04, 0x06, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x06, 0x04, 0x00};
 unsigned char mouthHalfOpen[] = {0x00, 0x04, 0x06, 0x18, 0x18, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x18, 0x18, 0x06, 0x04, 0x00};
 unsigned char mouthOpen[] = {0x00, 0x00, 0x18, 0x24, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x24, 0x18, 0x00, 0x00};
@@ -12,42 +14,61 @@ unsigned char backward[] = {0x00,0x00,0x00,0x00,0x00,0x24,0x12,0x09,0x12,0x24,0x
 unsigned char forward[] = {0x00,0x00,0x00,0x00,0x00,0x24,0x48,0x90,0x48,0x24,0x00,0x00,0x00,0x00,0x00,0x00};
 unsigned char left[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x44,0x28,0x10,0x44,0x28,0x10,0x44,0x28,0x10,0x00};
 unsigned char right[] = {0x00,0x10,0x28,0x44,0x10,0x28,0x44,0x10,0x28,0x44,0x00,0x00,0x00,0x00,0x00,0x00};
-unsigned char STOP01[] = {0x2E,0x2A,0x3A,0x00,0x02,0x3E,0x02,0x00,0x3E,0x22,0x3E,0x00,0x3E,0x0A,0x0E,0x00};
+unsigned char brake[] = {0x2E,0x2A,0x3A,0x00,0x02,0x3E,0x02,0x00,0x3E,0x22,0x3E,0x00,0x3E,0x0A,0x0E,0x00};
 unsigned char clear[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
 unsigned char rightLessThanLeft[] = {0x7f, 0x09, 0x09, 0x19, 0x26, 0x40, 0x10, 0x28, 0x44, 0x00, 0x00, 0x7f, 0x40, 0x40, 0x40, 0x40};
 unsigned char rightGreaterThanLeft[] = {0x7f, 0x09, 0x09, 0x19, 0x26, 0x40, 0x00, 0x44, 0x28, 0x10, 0x00, 0x7f, 0x40, 0x40, 0x40, 0x40};
 
-
 #define SCL_Pin  A5  //Set clock pin to A5
 #define SDA_Pin  A4  //Set data pin to A4
 
-#define ML_Ctrl 13  //define direction control pin of left motor
-#define ML_PWM 11   //define PWM control pin of left motor
-#define MR_Ctrl 12  //define direction control pin of right motor
-#define MR_PWM 3   //define PWM control pin of right motor
+//-----------------------------------------------------------------------------------------------------------------------------------
+//MOTOR CONTROL
+//-----------------------------------------------------------------------------------------------------------------------------------
+#define ML_Ctrl 13  //Left Motor Direction Control Pin 13
+#define ML_PWM 11   //Left Motor PWM Control Pin 11
+#define MR_Ctrl 12  //Right Motor Direction Control Pin 12
+#define MR_PWM 3    //Right Motor PWM Control Pin 3
 
-#define Trig 5  //ultrasonic trig Pin
-#define Echo 4  //ultrasonic echo Pin
-int distance; //save the distance value detected by ultrasonic, follow function
-int random2; //save the variable of random numberssave the variable of random numbers
-//save the distance value detected by ultrasonic, obstacle avoidance function
-int frontDistance;  
+//-----------------------------------------------------------------------------------------------------------------------------------
+//ULTRASONIC DISTANCE
+//-----------------------------------------------------------------------------------------------------------------------------------
+#define Trig 5      //Ultrasonic Trig Pin 5
+#define Echo 4      //Ultrasonic Echo Pin 4
+
+int distance;       //save the distance value detected by ultrasonic, FollowDistance() function
+int random2;        //save the variable of random number
+int frontDistance;  //Distance variables for the Avoid() function
 int leftDistance;
 int rightDistance;
 int stallCheckDistance = 0;
-int pauseAndCheckDist = 45;
+int setDistance = 45; //Sets the distance to check
 
+//-----------------------------------------------------------------------------------------------------------------------------------
+//SERVO (HEAD) CONTROL
+//-----------------------------------------------------------------------------------------------------------------------------------
 #define servoPin 9  //servo Pin
 int pulsewidth;
 
-#define light_L_Pin A1   //define the pin of left photo resistor sensor
-#define light_R_Pin A2   //define the pin of right photo resistor sensor
-int left_light;
-int right_light;
 
-char bluetooth_val; //save the value of Bluetooth reception
-int flag;  //flag variable, it is used to entry and exist function
+//-----------------------------------------------------------------------------------------------------------------------------------
+//LIGHT SENSORS
+//-----------------------------------------------------------------------------------------------------------------------------------
+#define light_L_Pin A1   //Left Light Sensor Pin A1
+#define light_R_Pin A2   //Right Light Sensor Pin A2
+int leftLight;
+int rightLight;
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//BLUETOOTH
+//-----------------------------------------------------------------------------------------------------------------------------------
+char bluetoothRecValue; //Save the received Bluetooth value
+int flag;  //flag, to enter and exist functions
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//setup()
+//-----------------------------------------------------------------------------------------------------------------------------------
 void setup(){
   Serial.begin(9600);
   pinMode(Trig, OUTPUT);
@@ -66,17 +87,24 @@ void setup(){
   pinMode(light_R_Pin, INPUT);
 }
 
-void loop(){
+//-----------------------------------------------------------------------------------------------------------------------------------
+//loop()
+//-----------------------------------------------------------------------------------------------------------------------------------
+void loop()
+{
 
-  //follow();  //do something (uncomment for testing without bluetooth)
+  // FollowDistance();  // Uncomment for testing without bluetooth
+  // AvoidObstacles()   // Uncomment for testing without bluetooth
+  // FollowLight()      // Uncomment for testing without bluetooth
 
 
   if (Serial.available())
   {
-    bluetooth_val = Serial.read();
-    Serial.println(bluetooth_val);
+    bluetoothRecValue = Serial.read();
+    Serial.println(bluetoothRecValue);
   }
-  switch (bluetooth_val) 
+  
+  switch (bluetoothRecValue) 
   {
     case '1': 
       GoForward(255,255);
@@ -94,16 +122,23 @@ void loop(){
       GoPause(0,0);
       break;
    case 'Q':
-      follow();
+      FollowDistance();
       break;
    case 'R':
       AvoidObstacles();
       break;
    case 'S':
-      light_track();
+      FollowLight();
       break;
-  }}
-/*****************Obstacle Avoidance Function**************/
+   case 'A':
+      Mouth();
+      break;
+  }
+}
+  
+//-----------------------------------------------------------------------------------------------------------------------------------
+//AvoidObstacles() 
+//-----------------------------------------------------------------------------------------------------------------------------------
 void AvoidObstacles() 
 {
   flag = 0;  //the design that enter obstacle avoidance function
@@ -111,25 +146,27 @@ void AvoidObstacles()
   {
     random2 = random(1, 100);
 
+    frontDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
     
-   frontDistance = CheckDistance();  //assign the front distance detected by ultrasonic sensor to variable a
-    
-    
-    if (frontDistance < pauseAndCheckDist) //when the front distance detected is less than 20cm
+    if (frontDistance <= setDistance) //when the front distance detected is less than 20cm
     {
       GoPause(0,0);  //robot stops
-      delay(200); //delay in 200ms
+      delay(200);    //delay in 200ms
       
-      MoveHead(160);  //Ultrasonic platform turns left
-      for (int j = 1; j <= 10; j = j + (1)) { ///for statement, the data will be more accurate if ultrasonic sensor detect a few times. 
-        leftDistance = CheckDistance();  //assign the left distance detected by ultrasonic sensor to variable a1
+      MoveHead(160);  //Turn head servo left.
+      for (int j = 1; j <= 10; j = j + (1)) 
+      { //Data is more accurate if the ultrasonic sensor detects a few times
+        leftDistance = CheckDistance();  //Get the left distance
       }
       delay(200);
-      MoveHead(20); //Ultrasonic platform turns right
-      for (int k = 1; k <= 10; k = k + (1)) {
-        rightDistance = CheckDistance(); //assign the right distance detected by ultrasonic sensor to variable a2
+      
+      MoveHead(20); //Turn head servo right.
+      for (int k = 1; k <= 10; k = k + (1)) 
+      {
+        rightDistance = CheckDistance(); //Get the right distance
       }
-      if (leftDistance < 50 || rightDistance < 50)  //robot will turn to the longer distance side when left or right distance is less than 50cm.if the left or right distance is less than 50cm, the robot will turn to the greater distance
+      
+      if (leftDistance < setDistance || rightDistance < setDistance)  //robot will turn to the longer distance side when left or right distance is less than 50cm.if the left or right distance is less than 50cm, the robot will turn to the greater distance
       {
         if (leftDistance > rightDistance) //left distance is greater than right
         {
@@ -137,7 +174,7 @@ void AvoidObstacles()
           MoveHead(90);  //Ultrasonic platform turns back to right ahead ultrasonic platform turns front
           GoLeft(200,200);  //robot turns left
           delay(500);  //turn left 500ms
-         GoForward(125,125); //go forward
+          GoForward(125,125); //go forward
         } 
         else 
         {
@@ -145,7 +182,7 @@ void AvoidObstacles()
           MoveHead(90);
           GoRight(200,200); //robot turns right
           delay(500);
-         GoForward(200,200);  //go forward
+          GoForward(200,200);  //go forward
         }
       } 
       else  //both distance on two side is greater than or equal to 50cm, turn randomly
@@ -155,7 +192,7 @@ void AvoidObstacles()
           MoveHead(90);
           GoLeft(200,200); //robot turns left
           delay(500);
-         GoForward(200,200); //go forward
+          GoForward(200,200); //go forward
         } 
         else 
         {
@@ -163,7 +200,9 @@ void AvoidObstacles()
           GoRight(200,200); //robot turns right
           delay(500);
           GoForward(200,200); ///go forward
-       } } } 
+        }
+      } 
+    } 
       else  //If the front distance is greater than or equal to 20cm, robot car will go front
       {
         GoForward(200,200); //go forward
@@ -174,22 +213,26 @@ void AvoidObstacles()
         if (stallCheckDistance == frontDistance)
         {
           GetUnStuck(200,200);
-        }
-        
+        } 
       }
 
-
-  
-  // receive the Bluetooth value to end the obstacle avoidance function
-  if (Serial.available())
-  {
-    bluetooth_val = Serial.read();
-    if (bluetooth_val == 'P')  //receive P
+    // receive the Bluetooth value to end the obstacle avoidance function
+    if (Serial.available())
     {
-      flag = 1;  //when assign 1 to flag, end loop
-    }}}}
-/*******************Follow****************/
-void follow() {
+      bluetoothRecValue = Serial.read();
+      if (bluetoothRecValue == 'P')  //receive P
+      {
+        flag = 1;  //when assign 1 to flag, end loop
+      }
+    }
+  }  
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//FollowDistance() 
+//-----------------------------------------------------------------------------------------------------------------------------------
+
+void FollowDistance() {
   flag = 0;
   while (flag == 0) {
     distance = CheckDistance();  //assign the distance detected by ultrasonic sensor to distance
@@ -211,8 +254,8 @@ void follow() {
     }
     if (Serial.available())
     {
-      bluetooth_val = Serial.read();
-      if (bluetooth_val == 'P') 
+      bluetoothRecValue = Serial.read();
+      if (bluetoothRecValue == 'P') 
       {
         flag = 1;  //end loop
       }}}}
@@ -238,21 +281,25 @@ void MoveHead(int myangle) {
     delay((20 - pulsewidth / 1000));
   }}
 
-/****************Light Follow******************/
-void light_track() {
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//FollowLight()
+//-----------------------------------------------------------------------------------------------------------------------------------
+
+void FollowLight(){
   flag = 0;
   while (flag == 0) {
-    left_light = analogRead(light_L_Pin);
-    right_light = analogRead(light_R_Pin);
-    if (left_light > 450 && right_light > 450) //the value detected by photo resistor, go forward   //was 650 for all
+    leftLight = analogRead(light_L_Pin);
+    rightLight = analogRead(light_R_Pin);
+    if (leftLight > 450 && rightLight > 450) //the value detected by photo resistor, go forward   //was 650 for all
     {  
      GoForward(125,125);
     } 
-    else if (left_light > 450 && right_light <= 450)  //the value detected by photo resistor, turn left
+    else if (leftLight > 450 && rightLight <= 450)  //the value detected by photo resistor, turn left
     {
       GoLeft(125,125);
     } 
-    else if (left_light <= 450 && right_light > 450) //the value detected by photo resistor, turn right
+    else if (leftLight <= 450 && rightLight > 450) //the value detected by photo resistor, turn right
     {
       GoRight(125,125);
     } 
@@ -262,12 +309,48 @@ void light_track() {
     }
     if (Serial.available())
     {
-      bluetooth_val = Serial.read();
-      if (bluetooth_val == 'P') {
+      bluetoothRecValue = Serial.read();
+      if (bluetoothRecValue == 'P') {
         flag = 1;
      }}}}
-/***************Dot Matrix *****************/
-// this function is used for dot matrix display 
+
+
+
+
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//Mouth()
+//-----------------------------------------------------------------------------------------------------------------------------------
+void Mouth() 
+{
+  flag = 0;  //the design that enter obstacle avoidance function
+  while (flag == 0) 
+  {
+    int randomDelay = random(10, 2000); 
+    delay(200);
+    matrix_display(mouthClose); 
+    delay(randomDelay);
+    matrix_display(mouthHalfOpen); 
+    delay(80);
+    matrix_display(mouthOpen);
+
+    // receive the Bluetooth value to end the obstacle avoidance function
+    if (Serial.available())
+    {
+      bluetoothRecValue = Serial.read();
+      if (bluetoothRecValue == 'P')  //receive P
+      {
+        flag = 1;  //when assign 1 to flag, end loop
+      }
+    }
+  }  
+}
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//MatrixDisplay()
+//-----------------------------------------------------------------------------------------------------------------------------------
 void matrix_display(unsigned char matrix_value[])
 {
   IIC_start();
@@ -324,7 +407,10 @@ void IIC_end()
   digitalWrite(SDA_Pin,HIGH);
   delayMicroseconds(3);
 }
-/*************the function to run motor*************/
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//Tank Drive Motor Funtions
+//-----------------------------------------------------------------------------------------------------------------------------------
 void GoForward(int rightSpeed, int leftSpeed)
 {
   matrix_display(forward); 
@@ -359,7 +445,7 @@ void GoRight(int rightSpeed, int leftSpeed)
 }
 void GoPause(int rightSpeed, int leftSpeed)
 {
-  matrix_display(STOP01); 
+  matrix_display(brake); 
   digitalWrite(MR_Ctrl,LOW);
   analogWrite(MR_PWM,rightSpeed);
   digitalWrite(ML_Ctrl,LOW);
@@ -372,17 +458,4 @@ void GetUnStuck(int rightSpeed, int leftSpeed)
   delay(500);
   GoRight(rightSpeed,leftSpeed);
   delay(500);
-}
-
-
-void Mouth()
-{
-  int randomDelay = random(10, 20000); 
-  delay(200);
-  matrix_display(mouthClose); 
-  delay(randomDelay);
-  matrix_display(mouthHalfOpen); 
-  delay(80);
-  matrix_display(mouthOpen); 
-
 }
