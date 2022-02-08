@@ -9,7 +9,6 @@ unsigned char mouthClose[] = {0x00, 0x04, 0x06, 0x18, 0x18, 0x18, 0x18, 0x18, 0x
 unsigned char mouthHalfOpen[] = {0x00, 0x04, 0x06, 0x18, 0x18, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x18, 0x18, 0x06, 0x04, 0x00};
 unsigned char mouthOpen[] = {0x00, 0x00, 0x18, 0x24, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x24, 0x18, 0x00, 0x00};
 
-unsigned char start01[] = {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
 unsigned char backward[] = {0x00,0x00,0x00,0x00,0x00,0x24,0x12,0x09,0x12,0x24,0x00,0x00,0x00,0x00,0x00,0x00};
 unsigned char forward[] = {0x00,0x00,0x00,0x00,0x00,0x24,0x48,0x90,0x48,0x24,0x00,0x00,0x00,0x00,0x00,0x00};
 unsigned char left[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x44,0x28,0x10,0x44,0x28,0x10,0x44,0x28,0x10,0x00};
@@ -43,7 +42,7 @@ int frontDistance;  //Distance variables for the Avoid() function
 int leftDistance;
 int rightDistance;
 int stallCheckDistance = 0;
-int setDistance = 45; //Sets the distance to check
+int setDistance = 40; //Sets the distance to check
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //SERVO (HEAD) CONTROL
@@ -94,46 +93,11 @@ void loop()
 {
 
   // FollowDistance();  // Uncomment for testing without bluetooth
-  // AvoidObstacles()   // Uncomment for testing without bluetooth
-  // FollowLight()      // Uncomment for testing without bluetooth
+  // AvoidObstacles();  // Uncomment for testing without bluetooth
+  // FollowLight();     // Uncomment for testing without bluetooth
 
+  CheckBTChar();
 
-  if (Serial.available())
-  {
-    bluetoothRecValue = Serial.read();
-    Serial.println(bluetoothRecValue);
-  }
-  
-  switch (bluetoothRecValue) 
-  {
-    case '1': 
-      GoForward(255,255);
-      break;
-    case '3':  
-      GoBackward(255,255);
-      break;
-    case '4': 
-      GoLeft(255,255);
-      break;
-    case '2':  
-      GoRight(255,255);
-      break;
-    case 'P': 
-      GoPause(0,0);
-      break;
-   case 'Q':
-      FollowDistance();
-      break;
-   case 'R':
-      AvoidObstacles();
-      break;
-   case 'S':
-      FollowLight();
-      break;
-   case 'A':
-      Mouth();
-      break;
-  }
 }
   
 //-----------------------------------------------------------------------------------------------------------------------------------
@@ -252,13 +216,17 @@ void FollowDistance() {
     {
       GoPause(0,0);
     }
-    if (Serial.available())
+     if (Serial.available())
     {
       bluetoothRecValue = Serial.read();
       if (bluetoothRecValue == 'P') 
       {
-        flag = 1;  //end loop
-      }}}}
+        flag = 1;
+      }
+    }  
+  }  
+}
+
 //The function to control ultrasonic sensor the function controlling ultrasonic sensor
 float CheckDistance() {
   digitalWrite(Trig, LOW);
@@ -286,9 +254,11 @@ void MoveHead(int myangle) {
 //FollowLight()
 //-----------------------------------------------------------------------------------------------------------------------------------
 
-void FollowLight(){
+void FollowLight()
+{
   flag = 0;
-  while (flag == 0) {
+  while (flag == 0) 
+  {
     leftLight = analogRead(light_L_Pin);
     rightLight = analogRead(light_R_Pin);
     if (leftLight > 450 && rightLight > 450) //the value detected by photo resistor, go forward   //was 650 for all
@@ -310,13 +280,13 @@ void FollowLight(){
     if (Serial.available())
     {
       bluetoothRecValue = Serial.read();
-      if (bluetoothRecValue == 'P') {
+      if (bluetoothRecValue == 'P') 
+      {
         flag = 1;
-     }}}}
-
-
-
-
+      }
+    }  
+  }  
+}
 
 
 //-----------------------------------------------------------------------------------------------------------------------------------
@@ -347,6 +317,50 @@ void Mouth()
   }  
 }
 
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//Bluetooth Character Detect and Check
+//-----------------------------------------------------------------------------------------------------------------------------------
+
+void CheckBTChar()
+{
+  if (Serial.available())
+  {
+    bluetoothRecValue = Serial.read();
+    Serial.println(bluetoothRecValue);
+  }
+  
+  switch (bluetoothRecValue) 
+  {
+    case '1': 
+      GoForward(255,255);
+      break;
+    case '3':  
+      GoBackward(255,255);
+      break;
+    case '4': 
+      GoLeft(255,255);
+      break;
+    case '2':  
+      GoRight(255,255);
+      break;
+    case 'P': 
+      GoPause(0,0);
+      break;
+   case 'Q':
+      FollowDistance();
+      break;
+   case 'R':
+      AvoidObstacles();
+      break;
+   case 'S':
+      FollowLight();
+      break;
+   case 'A':
+      Mouth();
+      break;
+  }
+}
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //MatrixDisplay()
