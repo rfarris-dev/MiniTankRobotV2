@@ -1,10 +1,14 @@
+//Code written for for Ks0428 keyestudio Mini Tank Robot V2.  https://www.icedcoffeeist.com/keyestudio-mini-tank-robot-v2-assembly-code-and-test/
 
-//Use 'Bluetooth Electronics' Android App for Control
+//Robot wired according to assembly guides at: https://wiki.keyestudio.com/Ks0428_keyestudio_Mini_Tank_Robot_V2
+//If you've change the wiring, you'll need to review the pins defined within this code.
+
+//Use Keuwlsoft's 'Bluetooth Electronics' Android App to create you own Bluetooth controller.
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //DOT MATRIX LED DISPLAY
 //-----------------------------------------------------------------------------------------------------------------------------------
-//Array, used to store the images for the 8 x 16 LED Display
+//Array, used to store the images for the 8 x 16 LED Display.  Used in all Modes.
 unsigned char mouthClose[] = {0x00, 0x04, 0x06, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x06, 0x04, 0x00};
 unsigned char mouthHalfOpen[] = {0x00, 0x04, 0x06, 0x18, 0x18, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x18, 0x18, 0x06, 0x04, 0x00};
 unsigned char mouthOpen[] = {0x00, 0x00, 0x18, 0x24, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x24, 0x18, 0x00, 0x00};
@@ -19,56 +23,45 @@ unsigned char clear[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 unsigned char rightLessThanLeft[] = {0x7f, 0x09, 0x09, 0x19, 0x26, 0x40, 0x10, 0x28, 0x44, 0x00, 0x00, 0x7f, 0x40, 0x40, 0x40, 0x40};
 unsigned char rightGreaterThanLeft[] = {0x7f, 0x09, 0x09, 0x19, 0x26, 0x40, 0x00, 0x44, 0x28, 0x10, 0x00, 0x7f, 0x40, 0x40, 0x40, 0x40};
 
-#define SCL_Pin  A5  //Set clock pin to A5
-#define SDA_Pin  A4  //Set data pin to A4
+#define SCL_Pin  A5        //Set clock pin to A5
+#define SDA_Pin  A4        //Set data pin to A4
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //MOTOR CONTROL
 //-----------------------------------------------------------------------------------------------------------------------------------
-#define ML_Ctrl 13  //Left Motor Direction Control Pin 13
-#define ML_PWM 11   //Left Motor PWM Control Pin 11
-#define MR_Ctrl 12  //Right Motor Direction Control Pin 12
-#define MR_PWM 3    //Right Motor PWM Control Pin 3
+#define ML_Ctrl 13         //Left Motor Direction Control Pin 13
+#define ML_PWM 11          //Left Motor PWM Control Pin 11
+#define MR_Ctrl 12         //Right Motor Direction Control Pin 12
+#define MR_PWM 3           //Right Motor PWM Control Pin 3
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //ULTRASONIC DISTANCE
 //-----------------------------------------------------------------------------------------------------------------------------------
-#define Trig 5      //Ultrasonic Trig Pin 5
-#define Echo 4      //Ultrasonic Echo Pin 4
-
-int distance;       //save the distance value detected by ultrasonic, FollowDistance() function
-int random2;        //save the variable of random number
-int frontDistance;  //Distance variables for the Avoid() function
-int leftDistance;
-int rightDistance;
-int stallCheckDistance = 0;
-int setDistance = 40; //Sets the distance to check
+#define Trig 5            //Ultrasonic Trig Pin 5
+#define Echo 4            //Ultrasonic Echo Pin 4
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //SERVO (HEAD) CONTROL
 //-----------------------------------------------------------------------------------------------------------------------------------
-#define servoPin 9  //servo Pin
-int pulsewidth;
-
+#define servoPin 9        //servo Pin
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //LIGHT SENSORS
 //-----------------------------------------------------------------------------------------------------------------------------------
 #define light_L_Pin A1   //Left Light Sensor Pin A1
 #define light_R_Pin A2   //Right Light Sensor Pin A2
-int leftLight;
-int rightLight;
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //BLUETOOTH
 //-----------------------------------------------------------------------------------------------------------------------------------
 char bluetoothRecValue; //Save the received Bluetooth value
-int flag;  //flag, to enter and exist functions
+int flag;               //To enter and exit modes.
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //setup()
 //-----------------------------------------------------------------------------------------------------------------------------------
-void setup(){
+void setup()
+{
   Serial.begin(9600);
   pinMode(Trig, OUTPUT);
   pinMode(Echo, INPUT);
@@ -78,7 +71,7 @@ void setup(){
   pinMode(MR_PWM, OUTPUT);
   
   pinMode(servoPin, OUTPUT);
-  MoveHead(90); //set servo to 90°
+  MoveHead(90); 			      //Servo head looks forward (servo at 90)
   pinMode(SCL_Pin,OUTPUT);
   pinMode(SDA_Pin,OUTPUT);
   matrix_display(clear);    //Clear the display
@@ -96,17 +89,26 @@ void loop()
   // AvoidObstacles();  // Uncomment for testing without bluetooth
   // FollowLight();     // Uncomment for testing without bluetooth
 
-  CheckBTChar();
+  CheckBTChar();        //Keep looking for character(s) sent via Bluetooth
 
 }
   
 //-----------------------------------------------------------------------------------------------------------------------------------
-//AvoidObstacles() 
+//AvoidObstacles() - Avoid Obstacles Mode
 //-----------------------------------------------------------------------------------------------------------------------------------
 void AvoidObstacles() 
 {
-  flag = 0;  //the design that enter obstacle avoidance function
-  while (flag == 0) 
+  int random2;          //save the variable of random number
+  int frontDistance;    //Distance variables for the Avoid() function
+  int leftDistance;
+  int rightDistance;
+  int stallCheckDistance = 0;
+  int setDistance = 45; //Sets the distance to check
+
+  Brake(0,0);         //Make sure robot starts in stoped position
+  
+  flag = 0; 
+  while (flag == 0)     //Enter the mode.
   {
     random2 = random(1, 100);
 
@@ -114,91 +116,99 @@ void AvoidObstacles()
     
     if (frontDistance <= setDistance) //when the front distance detected is less than 20cm
     {
-      GoPause(0,0);  //robot stops
-      delay(200);    //delay in 200ms
+      Brake(0,0);     //Stop robot tank motors.
+      delay(200);  
       
-      MoveHead(160);  //Turn head servo left.
+      MoveHead(160);    //Turn head servo left.
       for (int j = 1; j <= 10; j = j + (1)) 
       { //Data is more accurate if the ultrasonic sensor detects a few times
         leftDistance = CheckDistance();  //Get the left distance
       }
       delay(200);
       
-      MoveHead(20); //Turn head servo right.
+      MoveHead(20);     //Turn head servo right.
       for (int k = 1; k <= 10; k = k + (1)) 
       {
         rightDistance = CheckDistance(); //Get the right distance
       }
+
+      //Robot will turn toward the longer distance side when left or right distance is less than setDistance.  
+      //If the left or right distance is less than setDistance, the robot will turn toward the greater distance
       
-      if (leftDistance < setDistance || rightDistance < setDistance)  //robot will turn to the longer distance side when left or right distance is less than 50cm.if the left or right distance is less than 50cm, the robot will turn to the greater distance
+      if ((leftDistance < setDistance) || (rightDistance < setDistance)) 
       {
-        if (leftDistance > rightDistance) //left distance is greater than right
+        if (leftDistance > rightDistance)   //left distance is greater than right
         {
           matrix_display(rightLessThanLeft); 
-          MoveHead(90);  //Ultrasonic platform turns back to right ahead ultrasonic platform turns front
-          GoLeft(200,200);  //robot turns left
-          delay(500);  //turn left 500ms
-          GoForward(125,125); //go forward
+          MoveHead(90);        //Head looks forward
+          GoLeft(200,200);     //Robot turns left 500mS
+          delay(500);          
+          GoForward(125,125);  //Go forward
         } 
         else 
         {
           matrix_display(rightGreaterThanLeft); 
-          MoveHead(90);
-          GoRight(200,200); //robot turns right
+          MoveHead(90);        //Head looks forward
+          GoRight(200,200);    //Robot turns right for 500mS
           delay(500);
           GoForward(200,200);  //go forward
         }
       } 
-      else  //both distance on two side is greater than or equal to 50cm, turn randomly
+      else  //Distance on both sides is greater than or equal to setDistance, turn randomly
       {
         if ((long) (random2) % (long) (2) == 0)  //when the random number is even
         {
           MoveHead(90);
-          GoLeft(200,200); //robot turns left
+          GoLeft(200,200);    //robot turns left
           delay(500);
           GoForward(200,200); //go forward
         } 
         else 
         {
           MoveHead(90);
-          GoRight(200,200); //robot turns right
+          GoRight(200,200);   //robot turns right
           delay(500);
-          GoForward(200,200); ///go forward
+          GoForward(200,200); //go forward
         }
       } 
     } 
-      else  //If the front distance is greater than or equal to 20cm, robot car will go front
+      else  //If the front distance is greater than or equal to setDistance, go forward.
       {
-        GoForward(200,200); //go forward
+        GoForward(200,200);  
         delay(500);
         
         stallCheckDistance = CheckDistance();
 
         if (stallCheckDistance == frontDistance)
         {
-          GetUnStuck(200,200);
+          GetUnStuck(200,200);  //Am I stuck? Get unstuck.
         } 
       }
 
-    // receive the Bluetooth value to end the obstacle avoidance function
     if (Serial.available())
     {
       bluetoothRecValue = Serial.read();
       if (bluetoothRecValue == 'P')  //receive P
       {
-        flag = 1;  //when assign 1 to flag, end loop
+        flag = 1;  //Exit the mode.
       }
     }
   }  
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------------
-//FollowDistance() 
+//FollowDistance() - Follow Distance Mode
 //-----------------------------------------------------------------------------------------------------------------------------------
 
-void FollowDistance() {
+void FollowDistance() 
+{
+  int distance;
+  
+  Brake(0,0);  //Make sure robot starts in stoped position
+  
   flag = 0;
-  while (flag == 0) {
+  while (flag == 0) 
+  {
     distance = CheckDistance();  //assign the distance detected by ultrasonic sensor to distance
     if (distance >= 20 && distance <= 60) //the range to go front
     {
@@ -206,56 +216,39 @@ void FollowDistance() {
     }
     else if (distance > 10 && distance < 20)  //the range to stop
     {
-      GoPause(0,0);
+      Brake(0,0);
     }
     else if (distance <= 10)  // the range to go back
     {
       GoBackward(125,125);
     }
-    else  //other situations, stop
+    else  //Stop in other situations
     {
-      GoPause(0,0);
+      Brake(0,0);
     }
      if (Serial.available())
     {
       bluetoothRecValue = Serial.read();
       if (bluetoothRecValue == 'P') 
       {
-        flag = 1;
+        flag = 1;  //Exit the mode.
       }
     }  
   }  
 }
 
-//The function to control ultrasonic sensor the function controlling ultrasonic sensor
-float CheckDistance() {
-  digitalWrite(Trig, LOW);
-  delayMicroseconds(2);
-  digitalWrite(Trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(Trig, LOW);
-  float distance = pulseIn(Echo, HIGH) / 58.00;  //58.20 means 2*29.1=58.2
-  delay(10);
-  return distance;
-}
-
-//The function to control servo the function controlling servo
-void MoveHead(int myangle) {
-  for (int i = 0; i <= 50; i = i + (1)) {
-    pulsewidth = myangle * 11 + 500;
-    digitalWrite(servoPin,HIGH);
-    delayMicroseconds(pulsewidth);
-    digitalWrite(servoPin,LOW);
-    delay((20 - pulsewidth / 1000));
-  }}
-
 
 //-----------------------------------------------------------------------------------------------------------------------------------
-//FollowLight()
+//FollowLight() - Follow light Mode
 //-----------------------------------------------------------------------------------------------------------------------------------
 
 void FollowLight()
 {
+  int leftLight;
+  int rightLight;
+  
+  Brake(0,0);  //Make sure robot starts in stoped position
+  
   flag = 0;
   while (flag == 0) 
   {
@@ -275,7 +268,7 @@ void FollowLight()
     } 
     else  //other situations, stop
     {
-      GoPause(0,0);
+      Brake(0,0);
     }
     if (Serial.available())
     {
@@ -290,13 +283,16 @@ void FollowLight()
 
 
 //-----------------------------------------------------------------------------------------------------------------------------------
-//Mouth()
+//Mouth() - Animated Mouth Mode
 //-----------------------------------------------------------------------------------------------------------------------------------
 void Mouth() 
 {
-  flag = 0;  //the design that enter obstacle avoidance function
+  Brake(0,0);  //Make sure robot starts in stoped position
+  
+  flag = 0;      //the design that enter obstacle avoidance function
   while (flag == 0) 
   {
+    
     int randomDelay = random(10, 2000); 
     delay(200);
     matrix_display(mouthClose); 
@@ -305,21 +301,50 @@ void Mouth()
     delay(80);
     matrix_display(mouthOpen);
 
-    // receive the Bluetooth value to end the obstacle avoidance function
     if (Serial.available())
     {
       bluetoothRecValue = Serial.read();
       if (bluetoothRecValue == 'P')  //receive P
       {
-        flag = 1;  //when assign 1 to flag, end loop
+        flag = 1;  //Exit the mode.
       }
     }
   }  
 }
 
+//-----------------------------------------------------------------------------------------------------------------------------------
+//CheckDistance() - Ultrasonic Sensor for Distance Measuring
+//-----------------------------------------------------------------------------------------------------------------------------------
+float CheckDistance() 
+{
+  digitalWrite(Trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(Trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(Trig, LOW);
+  float distance = pulseIn(Echo, HIGH) / 58.00;  //58.20 means 2*29.1=58.2
+  delay(10);
+  return distance;
+}
 
 //-----------------------------------------------------------------------------------------------------------------------------------
-//Bluetooth Character Detect and Check
+//MoveHead() - Move the robot's head (servo)
+//-----------------------------------------------------------------------------------------------------------------------------------
+void MoveHead(int myangle) 
+{
+  int pulsewidth;
+  for (int i = 0; i <= 50; i = i + (1)) 
+  {
+    pulsewidth = myangle * 11 + 500;
+    digitalWrite(servoPin,HIGH);
+    delayMicroseconds(pulsewidth);
+    digitalWrite(servoPin,LOW);
+    delay((20 - pulsewidth / 1000));
+  }
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//CheckBTChar() - Bluetooth Character Detect and Check
 //-----------------------------------------------------------------------------------------------------------------------------------
 
 void CheckBTChar()
@@ -345,7 +370,7 @@ void CheckBTChar()
       GoRight(255,255);
       break;
     case 'P': 
-      GoPause(0,0);
+      Brake(0,0);
       break;
    case 'Q':
       FollowDistance();
@@ -363,7 +388,7 @@ void CheckBTChar()
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------------
-//MatrixDisplay()
+//MatrixDisplay() - 8 x 16 LED Display
 //-----------------------------------------------------------------------------------------------------------------------------------
 void matrix_display(unsigned char matrix_value[])
 {
@@ -389,14 +414,14 @@ void IIC_start()
   digitalWrite(SDA_Pin,LOW);
   delayMicroseconds(3);
 }
-//convey data
+//Convey data
 void IIC_send(unsigned char send_data)
 {
-  for(char i = 0;i < 8;i++)  //each byte has 8 bits
+  for(char i = 0;i < 8;i++)  //Each byte has 8 bits
   {
-      digitalWrite(SCL_Pin,LOW);  //pull down clock pin SCL Pin to change the signals of SDA
+      digitalWrite(SCL_Pin,LOW);  //Pull down clock pin SCL Pin to change the signals of SDA
       delayMicroseconds(3);
-      if(send_data & 0x01)  //set high and low level of SDA_Pin according to 1 or 0 of every bit
+      if(send_data & 0x01)        //Set high and low level of SDA_Pin according to 1 or 0 of every bit
       {
         digitalWrite(SDA_Pin,HIGH);
       }
@@ -405,10 +430,12 @@ void IIC_send(unsigned char send_data)
         digitalWrite(SDA_Pin,LOW);
       }
       delayMicroseconds(3);
-      digitalWrite(SCL_Pin,HIGH); //pull up clock pin SCL_Pin to stop transmitting data
+      digitalWrite(SCL_Pin,HIGH);  //Pull up clock pin SCL_Pin to stop transmitting data
       delayMicroseconds(3);
-      send_data = send_data >> 1;  // detect bit by bit, so move the data right by one
-  }}
+      send_data = send_data >> 1;  //Detect bit by bit, so move the data right by one
+  }
+}
+
 //The sign that data transmission ends
 void IIC_end()
 {
@@ -457,7 +484,7 @@ void GoRight(int rightSpeed, int leftSpeed)
   digitalWrite(ML_Ctrl,LOW);
   analogWrite(ML_PWM,leftSpeed);
 }
-void GoPause(int rightSpeed, int leftSpeed)
+void Brake(int rightSpeed, int leftSpeed)
 {
   matrix_display(brake); 
   digitalWrite(MR_Ctrl,LOW);
