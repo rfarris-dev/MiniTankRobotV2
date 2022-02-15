@@ -5,6 +5,19 @@
 
 //Use Keuwlsoft's 'Bluetooth Electronics' Android App to create you own Bluetooth controller.
 
+
+
+
+
+unsigned long previousTimeFrontCheck = millis();
+long timeIntervalFrontCheck = 10;
+
+unsigned long previousTimeLeftCheck = millis();
+long timeIntervalLeftCheck = 20;
+
+unsigned long previousTimeRightCheck = millis();
+long timeIntervalRightCheck = 30;
+
 //-----------------------------------------------------------------------------------------------------------------------------------
 //DOT MATRIX LED DISPLAY
 //-----------------------------------------------------------------------------------------------------------------------------------
@@ -84,9 +97,10 @@ void setup()
 //-----------------------------------------------------------------------------------------------------------------------------------
 void loop()
 {
-
+  
+  
   // FollowDistance();  // Uncomment for testing without bluetooth
-  // AvoidObstacles();  // Uncomment for testing without bluetooth
+      AvoidObstacles();  // Uncomment for testing without bluetooth
   // FollowLight();     // Uncomment for testing without bluetooth
 
   CheckBTChar();        //Keep looking for character(s) sent via Bluetooth
@@ -96,7 +110,7 @@ void loop()
 //-----------------------------------------------------------------------------------------------------------------------------------
 //AvoidObstacles() - Avoid Obstacles Mode
 //-----------------------------------------------------------------------------------------------------------------------------------
-void AvoidObstacles() 
+/*void AvoidObstacles() 
 {
   int random2;          //save the variable of random number
   int frontDistance;    //Distance variables for the Avoid() function
@@ -117,14 +131,12 @@ void AvoidObstacles()
     if (frontDistance <= setDistance) //when the front distance detected is less than 20cm
     {
       Brake(0,0);     //Stop robot tank motors.
-      delay(200);  
       
       MoveHead(160);    //Turn head servo left.
       for (int j = 1; j <= 10; j = j + (1)) 
       { //Data is more accurate if the ultrasonic sensor detects a few times
         leftDistance = CheckDistance();  //Get the left distance
       }
-      delay(200);
       
       MoveHead(20);     //Turn head servo right.
       for (int k = 1; k <= 10; k = k + (1)) 
@@ -194,7 +206,114 @@ void AvoidObstacles()
       }
     }
   }  
+} */
+
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------
+//AvoidObstacles() - Avoid Obstacles Mode
+//-----------------------------------------------------------------------------------------------------------------------------------
+
+void AvoidObstacles()
+{
+
+  int setDistance = 45; //Sets the distance to check
+
+  int fDist = CheckFrontDistance();
+  
+  
+  if (fDist <= setDistance) //when the front distance detected is less than 20cm
+  {
+    Brake(0,0);     //Stop robot tank motors.
+    int fDist = CheckFrontDistance();
+    Serial.print("Front: ");
+    Serial.print(fDist);
+    Serial.println(" cm");
+    int lDist = CheckLeftDistance();
+    int rDist = CheckRightDistance();
+    
+  }
+  
+  else
+  {
+    GoForward(200,200);
+  }
+  
 }
+
+
+
+int CheckFrontDistance() 
+{
+  int frontDistance;
+  int sum = 0;
+  int avg = 0;
+
+  unsigned long currentTime = millis();
+
+  // task
+  if(currentTime - previousTimeFrontCheck > timeIntervalFrontCheck) 
+  {
+    previousTimeFrontCheck = currentTime;
+    MoveHead(90); 
+    for (int i=0; i <10; i++)
+    {  
+      frontDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
+      sum += frontDistance;
+    }
+    frontDistance = sum/10;
+  }
+  return frontDistance;
+}
+
+
+int CheckLeftDistance() 
+{
+  int leftDistance;
+  int sum = 0;
+  int avg = 0;
+
+  unsigned long currentTime = millis();
+
+  // task
+  if(currentTime - previousTimeLeftCheck > timeIntervalLeftCheck) 
+  {
+    previousTimeLeftCheck = currentTime;
+    MoveHead(160); 
+    for (int i=0; i <10; i++)
+    {  
+      leftDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
+      sum += leftDistance;
+    }
+    leftDistance = sum/10;
+  }
+  return leftDistance;
+}
+
+int CheckRightDistance() 
+{
+  int rightDistance;
+  int sum = 0;
+  int avg = 0;
+
+  unsigned long currentTime = millis();
+
+  // task
+  if(currentTime - previousTimeRightCheck > timeIntervalRightCheck) 
+  {
+    previousTimeRightCheck = currentTime;
+    MoveHead(20); 
+    for (int i=0; i <10; i++)
+    {  
+      rightDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
+      sum += rightDistance;
+    }
+    rightDistance = sum/10;
+  }
+  return rightDistance;
+}
+
+
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //FollowDistance() - Follow Distance Mode
@@ -376,7 +495,7 @@ void CheckBTChar()
       FollowDistance();
       break;
    case 'R':
-      AvoidObstacles();
+//      AvoidObstacles();
       break;
    case 'S':
       FollowLight();
