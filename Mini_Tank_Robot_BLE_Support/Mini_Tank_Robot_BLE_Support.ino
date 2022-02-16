@@ -1,22 +1,13 @@
+//-----------------------------------------------------------------------------------------------------------------------------------
 //Code written for for Ks0428 keyestudio Mini Tank Robot V2.  https://www.icedcoffeeist.com/keyestudio-mini-tank-robot-v2-assembly-code-and-test/
 
 //Robot wired according to assembly guides at: https://wiki.keyestudio.com/Ks0428_keyestudio_Mini_Tank_Robot_V2
 //If you've change the wiring, you'll need to review the pins defined within this code.
 
 //Use Keuwlsoft's 'Bluetooth Electronics' Android App to create you own Bluetooth controller.
+//-----------------------------------------------------------------------------------------------------------------------------------
 
-
-
-
-
-unsigned long previousTimeFrontCheck = millis();
-long timeIntervalFrontCheck = 10;
-
-unsigned long previousTimeLeftCheck = millis();
-long timeIntervalLeftCheck = 20;
-
-unsigned long previousTimeRightCheck = millis();
-long timeIntervalRightCheck = 30;
+int setDistance = 45; //Sets the front distance to check in Avoid Obstacles mode.
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //DOT MATRIX LED DISPLAY
@@ -97,105 +88,37 @@ void setup()
 //-----------------------------------------------------------------------------------------------------------------------------------
 void loop()
 {
-  
-  
   // FollowDistance();  // Uncomment for testing without bluetooth
-      AvoidObstacles();  // Uncomment for testing without bluetooth
+  // AvoidObstacles();  // Uncomment for testing without bluetooth
   // FollowLight();     // Uncomment for testing without bluetooth
-
   CheckBTChar();        //Keep looking for character(s) sent via Bluetooth
-
 }
   
 //-----------------------------------------------------------------------------------------------------------------------------------
 //AvoidObstacles() - Avoid Obstacles Mode
 //-----------------------------------------------------------------------------------------------------------------------------------
-/*void AvoidObstacles() 
-{
-  int random2;          //save the variable of random number
-  int frontDistance;    //Distance variables for the Avoid() function
-  int leftDistance;
-  int rightDistance;
-  int stallCheckDistance = 0;
-  int setDistance = 45; //Sets the distance to check
 
-  Brake(0,0);         //Make sure robot starts in stoped position
-  
+void AvoidObstacles()
+{
   flag = 0; 
   while (flag == 0)     //Enter the mode.
   {
-    random2 = random(1, 100);
-
-    frontDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
-    
-    if (frontDistance <= setDistance) //when the front distance detected is less than 20cm
+    int fDist = CheckFrontDistance();
+  
+    if (fDist > setDistance*2 )
     {
-      Brake(0,0);     //Stop robot tank motors.
-      
-      MoveHead(160);    //Turn head servo left.
-      for (int j = 1; j <= 10; j = j + (1)) 
-      { //Data is more accurate if the ultrasonic sensor detects a few times
-        leftDistance = CheckDistance();  //Get the left distance
-      }
-      
-      MoveHead(20);     //Turn head servo right.
-      for (int k = 1; k <= 10; k = k + (1)) 
-      {
-        rightDistance = CheckDistance(); //Get the right distance
-      }
-
-      //Robot will turn toward the longer distance side when left or right distance is less than setDistance.  
-      //If the left or right distance is less than setDistance, the robot will turn toward the greater distance
-      
-      if ((leftDistance < setDistance) || (rightDistance < setDistance)) 
-      {
-        if (leftDistance > rightDistance)   //left distance is greater than right
-        {
-          matrix_display(rightLessThanLeft); 
-          MoveHead(90);        //Head looks forward
-          GoLeft(200,200);     //Robot turns left 500mS
-          delay(500);          
-          GoForward(125,125);  //Go forward
-        } 
-        else 
-        {
-          matrix_display(rightGreaterThanLeft); 
-          MoveHead(90);        //Head looks forward
-          GoRight(200,200);    //Robot turns right for 500mS
-          delay(500);
-          GoForward(200,200);  //go forward
-        }
-      } 
-      else  //Distance on both sides is greater than or equal to setDistance, turn randomly
-      {
-        if ((long) (random2) % (long) (2) == 0)  //when the random number is even
-        {
-          MoveHead(90);
-          GoLeft(200,200);    //robot turns left
-          delay(500);
-          GoForward(200,200); //go forward
-        } 
-        else 
-        {
-          MoveHead(90);
-          GoRight(200,200);   //robot turns right
-          delay(500);
-          GoForward(200,200); //go forward
-        }
-      } 
-    } 
-      else  //If the front distance is greater than or equal to setDistance, go forward.
-      {
-        GoForward(200,200);  
-        delay(500);
-        
-        stallCheckDistance = CheckDistance();
-
-        if (stallCheckDistance == frontDistance)
-        {
-          GetUnStuck(200,200);  //Am I stuck? Get unstuck.
-        } 
-      }
+      GoForward(210,210);    
+    }
+  
+    else
+    {
+      GoForward(120,120);
+    }
+    
+    if (fDist  <= setDistance) 
+    {
+      StopAndLook();   
+    }
 
     if (Serial.available())
     {
@@ -204,112 +127,95 @@ void loop()
       {
         flag = 1;  //Exit the mode.
       }
-    }
-  }  
-} */
-
-
-
-//-----------------------------------------------------------------------------------------------------------------------------------
-//AvoidObstacles() - Avoid Obstacles Mode
-//-----------------------------------------------------------------------------------------------------------------------------------
-
-void AvoidObstacles()
-{
-
-  int setDistance = 45; //Sets the distance to check
-
-  int fDist = CheckFrontDistance();
-  
-  
-  if (fDist <= setDistance) //when the front distance detected is less than 20cm
-  {
-    Brake(0,0);     //Stop robot tank motors.
-    int fDist = CheckFrontDistance();
-    Serial.print("Front: ");
-    Serial.print(fDist);
-    Serial.println(" cm");
-    int lDist = CheckLeftDistance();
-    int rDist = CheckRightDistance();
-    
+    } 
   }
-  
-  else
-  {
-    GoForward(200,200);
-  }
-  
 }
 
+void StopAndLook()
+{
+  Brake(0,0);    
+
+  int lDist = CheckLeftDistance(160);
+  int rDist = CheckRightDistance(20);
+  int random2;          //save the variable of random number
+
+    if ((lDist < setDistance) || (rDist < setDistance)) 
+    {
+      if (lDist > rDist)   //left distance is greater than right
+      {
+        matrix_display(rightLessThanLeft); 
+        MoveHead(90);        //Head looks forward
+        GoLeft(200,200);     //Robot turns left 500mS
+        delay(500);          
+        GoForward(125,125);  //Go forward
+      } 
+      else 
+      {
+        matrix_display(rightGreaterThanLeft); 
+        MoveHead(90);        //Head looks forward
+        GoRight(200,200);    //Robot turns right for 500mS
+        delay(500);
+        GoForward(200,200);  //go forward
+      }
+    } 
+    else  //Distance on both sides is greater than or equal to setDistance, turn randomly
+    {
+      if ((long) (random2) % (long) (2) == 0)  //when the random number is even
+      {
+        MoveHead(90);
+        GoLeft(200,200);    //robot turns left
+        delay(500);
+        GoForward(200,200); //go forward
+      } 
+      else 
+      {
+        MoveHead(90);
+        GoRight(200,200);   //robot turns right
+        delay(500);
+        GoForward(200,200); //go forward
+      }
+    }
+}
 
 
 int CheckFrontDistance() 
 {
   int frontDistance;
-  int sum = 0;
-  int avg = 0;
-
-  unsigned long currentTime = millis();
-
-  // task
-  if(currentTime - previousTimeFrontCheck > timeIntervalFrontCheck) 
-  {
-    previousTimeFrontCheck = currentTime;
-    MoveHead(90); 
-    for (int i=0; i <10; i++)
-    {  
-      frontDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
-      sum += frontDistance;
-    }
-    frontDistance = sum/10;
-  }
+  MoveHead(90); 
+  frontDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
   return frontDistance;
 }
 
 
-int CheckLeftDistance() 
+int CheckLeftDistance(int angle) 
 {
   int leftDistance;
   int sum = 0;
   int avg = 0;
 
-  unsigned long currentTime = millis();
-
-  // task
-  if(currentTime - previousTimeLeftCheck > timeIntervalLeftCheck) 
-  {
-    previousTimeLeftCheck = currentTime;
-    MoveHead(160); 
-    for (int i=0; i <10; i++)
-    {  
-      leftDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
-      sum += leftDistance;
-    }
-    leftDistance = sum/10;
+  MoveHead(angle); 
+  for (int i=0; i <10; i++)
+  {  
+    leftDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
+    sum += leftDistance;
   }
+  leftDistance = sum/10;
   return leftDistance;
 }
 
-int CheckRightDistance() 
+int CheckRightDistance(int angle) 
 {
   int rightDistance;
   int sum = 0;
   int avg = 0;
 
-  unsigned long currentTime = millis();
-
-  // task
-  if(currentTime - previousTimeRightCheck > timeIntervalRightCheck) 
-  {
-    previousTimeRightCheck = currentTime;
-    MoveHead(20); 
-    for (int i=0; i <10; i++)
-    {  
-      rightDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
-      sum += rightDistance;
-    }
-    rightDistance = sum/10;
+  MoveHead(angle); 
+  for (int i=0; i <10; i++)
+  {  
+    rightDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
+    sum += rightDistance;
   }
+  rightDistance = sum/10;
   return rightDistance;
 }
 
@@ -495,7 +401,7 @@ void CheckBTChar()
       FollowDistance();
       break;
    case 'R':
-//      AvoidObstacles();
+      AvoidObstacles();
       break;
    case 'S':
       FollowLight();
