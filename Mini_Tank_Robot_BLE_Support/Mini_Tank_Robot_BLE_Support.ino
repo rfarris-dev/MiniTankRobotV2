@@ -5,9 +5,7 @@
 //If you've change the wiring, you'll need to review the pins defined within this code.
 
 //Use Keuwlsoft's 'Bluetooth Electronics' Android App to create you own Bluetooth controller.
-//-----------------------------------------------------------------------------------------------------------------------------------
 
-int setDistance = 45; //Sets the front distance to check in Avoid Obstacles mode.
 
 //-----------------------------------------------------------------------------------------------------------------------------------
 //DOT MATRIX LED DISPLAY
@@ -38,9 +36,23 @@ unsigned char rightGreaterThanLeft[] = {0x7f, 0x09, 0x09, 0x19, 0x26, 0x40, 0x00
 #define MR_Ctrl 12         //Right Motor Direction Control Pin 12
 #define MR_PWM 3           //Right Motor PWM Control Pin 3
 
+int rSpeedStop = 0;        //Right tank speeds (0 -255)
+int lSpeedStop = 0;        //Left tank speeds (0 -255)
+
+int rSpeedSlow = 125;
+int lSpeedSlow = 125;
+
+int rSpeedMed = 200;
+int lSpeedMed = 200;
+
+int rSpeedFast = 255;
+int lSpeedFast = 255;
+
 //-----------------------------------------------------------------------------------------------------------------------------------
 //ULTRASONIC DISTANCE
 //-----------------------------------------------------------------------------------------------------------------------------------
+
+int setDistance = 45;     //Sets the front distance to check in Avoid Obstacles mode.
 #define Trig 5            //Ultrasonic Trig Pin 5
 #define Echo 4            //Ultrasonic Echo Pin 4
 
@@ -100,29 +112,32 @@ void loop()
 
 void AvoidObstacles()
 {
-  flag = 0; 
-  while (flag == 0)     //Enter the mode.
-  {
-    int fDist = CheckFrontDistance();
+  int frontAngle = 90;
   
-    if (fDist > setDistance*2 )
+  flag = 0; 
+  while (flag == 0)                               //Enter the mode.
+  {
+    int fDist = CheckFrontDistance(frontAngle);   //Check the front distance
+  
+    if (fDist > setDistance*2 )                   //If the distance to stop and look is still a ways out, medium speed ahead.
     {
-      GoForward(210,210);    
+      GoForward(rSpeedMed,lSpeedMed);     
     }
   
     else
     {
-      GoForward(120,120);
+      GoForward(rSpeedSlow,lSpeedSlow);          //Otherwise, slow speed.
     }
     
-    if (fDist  <= setDistance) 
+    if (fDist  <= setDistance)                   //Front distance is the set distance or less. 
     {
-      StopAndLook();   
-    }
+      StopLookDecide();                          //Stop , look, decide direction.
+    }         
 
     if (Serial.available())
     {
       bluetoothRecValue = Serial.read();
+      
       if (bluetoothRecValue == 'P')  //receive P
       {
         flag = 1;  //Exit the mode.
@@ -131,57 +146,61 @@ void AvoidObstacles()
   }
 }
 
-void StopAndLook()
+void StopLookDecide()
 {
-  Brake(0,0);    
+  Brake(rSpeedStop,lSpeedStop);                        //STOP
+ 
+  int rightAngle = 20;  
+  int frontAngle = 90;  
+  int leftAngle = 160;
+  int lDist = CheckLeftDistance(leftAngle);           //Look left and save the distance to lDist.
+  int rDist = CheckRightDistance(rightAngle);         //Look right and save the distance to rDist.
+  int random2; 
 
-  int lDist = CheckLeftDistance(160);
-  int rDist = CheckRightDistance(20);
-  int random2;          //save the variable of random number
 
-    if ((lDist < setDistance) || (rDist < setDistance)) 
+  if ((lDist < setDistance) || (rDist < setDistance)) 
+  {
+    if (lDist > rDist)                              //Left distance is greater than right
     {
-      if (lDist > rDist)   //left distance is greater than right
-      {
-        matrix_display(rightLessThanLeft); 
-        MoveHead(90);        //Head looks forward
-        GoLeft(200,200);     //Robot turns left 500mS
-        delay(500);          
-        GoForward(125,125);  //Go forward
-      } 
-      else 
-      {
-        matrix_display(rightGreaterThanLeft); 
-        MoveHead(90);        //Head looks forward
-        GoRight(200,200);    //Robot turns right for 500mS
-        delay(500);
-        GoForward(200,200);  //go forward
-      }
+      matrix_display(rightLessThanLeft); 
+      MoveHead(frontAngle);                         //Head looks forward
+      GoLeft(rSpeedMed,lSpeedMed);                  //Robot turns left for 500mS
+      delay(500);          
+      GoForward(rSpeedSlow,lSpeedSlow);             //Go forward
     } 
-    else  //Distance on both sides is greater than or equal to setDistance, turn randomly
+    else 
     {
-      if ((long) (random2) % (long) (2) == 0)  //when the random number is even
-      {
-        MoveHead(90);
-        GoLeft(200,200);    //robot turns left
-        delay(500);
-        GoForward(200,200); //go forward
-      } 
-      else 
-      {
-        MoveHead(90);
-        GoRight(200,200);   //robot turns right
-        delay(500);
-        GoForward(200,200); //go forward
-      }
+      matrix_display(rightGreaterThanLeft); 
+      MoveHead(frontAngle);                         //Head looks forward
+      GoRight(rSpeedMed,lSpeedMed);                 //Robot turns right for 500mS
+      delay(500);
+      GoForward(rSpeedSlow,lSpeedSlow);             //Go forward
     }
+  } 
+  else                                              //If distance on both sides is greater than or equal to setDistance, turn randomly
+  {
+    if ((long) (random2) % (long) (2) == 0)         //When the random number is even
+    {
+      MoveHead(frontAngle);
+      GoLeft(rSpeedMed,lSpeedMed);                  //Robot turns left for 500mS                             
+      delay(500);
+      GoForward(rSpeedSlow,lSpeedSlow);             //Go forward                         
+    } 
+    else 
+    {
+      MoveHead(frontAngle);
+      GoRight(rSpeedMed,lSpeedMed);                 //Robot turns right for 500mS  
+      delay(500);
+      GoForward(rSpeedSlow,lSpeedSlow);             //Go forward
+    }
+  }
 }
 
 
-int CheckFrontDistance() 
+int CheckFrontDistance(int angle) 
 {
   int frontDistance;
-  MoveHead(90); 
+  MoveHead(angle); 
   frontDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
   return frontDistance;
 }
@@ -192,14 +211,17 @@ int CheckLeftDistance(int angle)
   int leftDistance;
   int sum = 0;
   int avg = 0;
+  int num = 4;
 
   MoveHead(angle); 
-  for (int i=0; i <10; i++)
+  
+  for (int i=0; i <num; i++)
   {  
     leftDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
     sum += leftDistance;
   }
-  leftDistance = sum/10;
+  
+  leftDistance = sum/num;            //Average a few measurements.
   return leftDistance;
 }
 
@@ -208,17 +230,19 @@ int CheckRightDistance(int angle)
   int rightDistance;
   int sum = 0;
   int avg = 0;
+  int num = 4;
 
   MoveHead(angle); 
-  for (int i=0; i <10; i++)
+  
+  for (int i=0; i <num; i++)
   {  
     rightDistance = CheckDistance();  //Assign the front distance detected by ultrasonic sensor.
     sum += rightDistance;
   }
-  rightDistance = sum/10;
+  
+  rightDistance = sum/num;
   return rightDistance;
 }
-
 
 
 //-----------------------------------------------------------------------------------------------------------------------------------
@@ -229,27 +253,27 @@ void FollowDistance()
 {
   int distance;
   
-  Brake(0,0);  //Make sure robot starts in stoped position
+  Brake(rSpeedStop,lSpeedStop);                        //Make sure robot starts in stoped position
   
   flag = 0;
   while (flag == 0) 
   {
-    distance = CheckDistance();  //assign the distance detected by ultrasonic sensor to distance
-    if (distance >= 20 && distance <= 60) //the range to go front
+    distance = CheckDistance();                       //Assign the distance detected by ultrasonic sensor to distance
+    if (distance >= 20 && distance <= 60)             //the range to go front
     {
-     GoForward(125,125);
+     GoForward(rSpeedSlow,lSpeedSlow);                //Go forward
     }
-    else if (distance > 10 && distance < 20)  //the range to stop
+    else if (distance > 10 && distance < 20)          //The range to stop
     {
-      Brake(0,0);
+      Brake(rSpeedStop,lSpeedStop);
     }
-    else if (distance <= 10)  // the range to go back
+    else if (distance <= 10)                          // The range to go back
     {
-      GoBackward(125,125);
+      GoBackward(rSpeedSlow,lSpeedSlow);              //Go backward
     }
     else  //Stop in other situations
     {
-      Brake(0,0);
+      Brake(rSpeedStop,lSpeedStop);
     }
      if (Serial.available())
     {
@@ -272,7 +296,7 @@ void FollowLight()
   int leftLight;
   int rightLight;
   
-  Brake(0,0);  //Make sure robot starts in stoped position
+  Brake(rSpeedStop,lSpeedStop);  //Make sure robot starts in stoped position
   
   flag = 0;
   while (flag == 0) 
@@ -281,19 +305,19 @@ void FollowLight()
     rightLight = analogRead(light_R_Pin);
     if (leftLight > 450 && rightLight > 450) //the value detected by photo resistor, go forward   //was 650 for all
     {  
-     GoForward(125,125);
+     GoForward(rSpeedSlow,lSpeedSlow);  
     } 
     else if (leftLight > 450 && rightLight <= 450)  //the value detected by photo resistor, turn left
     {
-      GoLeft(125,125);
+      GoLeft(rSpeedSlow,lSpeedSlow);  
     } 
     else if (leftLight <= 450 && rightLight > 450) //the value detected by photo resistor, turn right
     {
-      GoRight(125,125);
+      GoRight(rSpeedSlow,lSpeedSlow);  
     } 
     else  //other situations, stop
     {
-      Brake(0,0);
+      Brake(rSpeedStop,lSpeedStop);
     }
     if (Serial.available())
     {
@@ -312,7 +336,7 @@ void FollowLight()
 //-----------------------------------------------------------------------------------------------------------------------------------
 void Mouth() 
 {
-  Brake(0,0);  //Make sure robot starts in stoped position
+  Brake(rSpeedStop,lSpeedStop);  //Make sure robot starts in stoped position
   
   flag = 0;      //the design that enter obstacle avoidance function
   while (flag == 0) 
@@ -383,19 +407,19 @@ void CheckBTChar()
   switch (bluetoothRecValue) 
   {
     case '1': 
-      GoForward(255,255);
+      GoForward(rSpeedFast,lSpeedFast);
       break;
     case '3':  
-      GoBackward(255,255);
+      GoBackward(rSpeedFast,lSpeedFast);
       break;
     case '4': 
-      GoLeft(255,255);
+      GoLeft(rSpeedFast,lSpeedFast);
       break;
     case '2':  
-      GoRight(255,255);
+      GoRight(rSpeedFast,lSpeedFast);
       break;
     case 'P': 
-      Brake(0,0);
+      Brake(rSpeedStop,lSpeedStop);
       break;
    case 'Q':
       FollowDistance();
